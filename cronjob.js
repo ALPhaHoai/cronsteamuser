@@ -67,7 +67,7 @@ export async function fetchPlayerProfile(steamId, steamClient) {
     { steamId },
     {
       $set: {
-        primeStatus: profile.prime ? "prime" : "non-prime",
+        prime: !!profile.prime,
         profile,
         lastTimeFetchPlayerProfile: new Date().getTime(),
         ...(typeof profile.elo === "number" && { elo: profile.elo }),
