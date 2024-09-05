@@ -16,5 +16,9 @@
     "mongodb": "^6.8.0",
     "morgan": "~1.9.1",
     "steamutils": "^1.4.48"
+  },
+  "devDependencies": {
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1"
   }
 }
