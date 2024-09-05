@@ -8,8 +8,9 @@ export async function initCron() {
     console.log("initCron");
 
     new CronJob(
-        "0 */5 * * * *",
+        "0 */15 * * * *",
         async function () {
+            const t1 = performance.now()
             await requireDB(async function (collection) {
                 const fetchedSteamIds = []
                 const myAccounts = await collection.MyAccount.find({
@@ -22,6 +23,7 @@ export async function initCron() {
                 }).toArray()
 
                 const myAccountSteamIds = myAccounts.map(({steamId}) => steamId)
+                console.log(`Total: ${myAccountSteamIds.length} accounts`);
 
                 for (const myAccount of myAccounts) {
                     const steamId = myAccount.steamId;
@@ -38,6 +40,7 @@ export async function initCron() {
                             cookie: myAccount.cookie,
                             async onPlayable(client) {
                                 for (const friendSteamId of needFetchedSteamIds) {
+                                    console.log("fetching profile", friendSteamId);
                                     const profile = await fetchPlayerProfile(friendSteamId, client)
                                     if (profile) {
                                         fetchedSteamIds.push(friendSteamId)
@@ -48,6 +51,8 @@ export async function initCron() {
                     }
                 }
             })
+            const t2 = performance.now()
+            console.log(`Fetch my profiles took ${t2 - t1}ms`)
         },
         null,
         true,
