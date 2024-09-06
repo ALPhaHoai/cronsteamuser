@@ -127,6 +127,7 @@ async function fetchPlayersProfile(includeFriend = false) {
   await requireDB(async function (collection) {
     const fetchedSteamIds = [];
     const myAccounts = await collection.MyAccount.find({
+      "config.store": { $ne: true },
       banned: { $ne: true },
     })
       .project({
