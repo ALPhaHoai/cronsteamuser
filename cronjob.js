@@ -43,7 +43,6 @@ export async function fetchPlayerProfile(steamId, steamClient) {
     const update = calculateMyAccountXP(myAccount, currentXP) || {};
     Object.assign(update, {
       prime: !!profile.prime,
-      profile,
       ...(typeof profile.elo === "number" && { elo: profile.elo }),
       ...(profile.vac_banned === 1 && { banned: true }),
     });
@@ -68,8 +67,7 @@ export async function fetchPlayerProfile(steamId, steamClient) {
     {
       $set: {
         prime: !!profile.prime,
-        profile,
-        lastTimeFetchPlayerProfile: new Date().getTime(),
+        lastTimeFetchPlayerProfile: Date.now(),
         ...(typeof profile.elo === "number" && { elo: profile.elo }),
         ...(profile.vac_banned === 1 && { banned: true }),
       },
