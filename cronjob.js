@@ -7,7 +7,7 @@ export async function initCron() {
   console.log("initCron");
 
   new CronJob(
-    "0 */15 * * * *",
+    "0 */30 * * * *",
     async function () {
       await fetchPlayersProfile(false);
     },
@@ -36,7 +36,7 @@ export async function fetchPlayerProfile(steamId, steamClient) {
     return null;
   }
 
-  console.log("ELO: ", profile.elo, steamId);
+  console.log(`[steamId] ELO: ${profile.elo} ${typeof profile.elo}`);
 
   // Update MyAccount if applicable
   const myAccount = await collection.MyAccount.findOne({ steamId });
@@ -164,6 +164,7 @@ async function fetchPlayersProfile(includeFriend = false) {
       });
 
       if (needFetchedSteamIds.length) {
+        needFetchedSteamIds.length = Math.min(15, needFetchedSteamIds.length);
         await SteamClient.isAccountPlayable({
           cookie: myAccount.cookie,
           async onPlayable(client) {
