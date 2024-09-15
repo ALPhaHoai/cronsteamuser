@@ -2,6 +2,7 @@ import { CronJob } from "cron";
 import moment from "moment";
 import SteamClient from "steamutils/SteamClient.js";
 import { collection, requireDB } from "./db.js";
+import _ from "lodash";
 
 export async function initCron() {
   console.log("initCron");
@@ -150,7 +151,7 @@ async function fetchPlayersProfile(includeFriend = false) {
         continue;
       }
 
-      const needFetchedSteamIds = [
+      let needFetchedSteamIds = [
         steamId,
         ...(myAccount.friendsIDList || []),
       ].filter(function (friendSteamId) {
@@ -164,6 +165,7 @@ async function fetchPlayersProfile(includeFriend = false) {
       });
 
       if (needFetchedSteamIds.length) {
+        needFetchedSteamIds = _.shuffle(needFetchedSteamIds);
         needFetchedSteamIds.length = Math.min(15, needFetchedSteamIds.length);
         await SteamClient.isAccountPlayable({
           cookie: myAccount.cookie,
