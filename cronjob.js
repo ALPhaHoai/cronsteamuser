@@ -3,6 +3,14 @@ import moment from "moment";
 import SteamClient from "steamutils/SteamClient.js";
 import { collection, requireDB } from "./db.js";
 import _ from "lodash";
+import SteamUser from "steamutils";
+import DiscordUser from "discord-control";
+
+export const DiscordAccounts = {
+  natri: "natri",
+  botnatri: "botnatri",
+  cinderella: "cinderella",
+};
 
 export async function initCron() {
   console.log("initCron");
@@ -21,6 +29,26 @@ export async function initCron() {
     "0 35 */3 * * *",
     async function () {
       await fetchPlayersProfile(true);
+    },
+    null,
+    true,
+    "Asia/Ho_Chi_Minh",
+  ).start();
+
+  new CronJob(
+    "0 35 */3 * * *",
+    async function () {
+      const t1 = performance.now();
+      const accounts = await collection.MyAccount.find().toArray();
+      while (accounts.length) {
+        const account = accounts.shift();
+        if (!account) {
+          break;
+        }
+        await fetchSteamUserSummary(account);
+      }
+      const t2 = performance.now();
+      console.log(`fetchSteamUserSummary took ${t2 - t1}ms`);
     },
     null,
     true,
@@ -171,7 +199,10 @@ async function fetchPlayersProfile(includeFriend = false) {
           cookie: myAccount.cookie,
           async onPlayable(client) {
             for (const friendSteamId of needFetchedSteamIds) {
-              console.log("fetching profile", friendSteamId);
+              console.log(
+                `fetching ${includeFriend ? "friend" : "my"} profile`,
+                friendSteamId,
+              );
               const profile = await fetchPlayerProfile(friendSteamId, client);
               if (profile) {
                 fetchedSteamIds.push(friendSteamId);
@@ -186,4 +217,131 @@ async function fetchPlayersProfile(includeFriend = false) {
   console.log(
     `Fetch ${includeFriend ? "friend" : "my"} profiles took ${t2 - t1}ms`,
   );
+}
+
+async function fetchSteamUserSummary(account) {
+  if (!account) {
+    return;
+  }
+  const steamUser = new SteamUser(account.cookie);
+  const friendsIDList = account.friendsIDList || [];
+
+  async function fetchFriend(steamId) {
+    if (!steamId) {
+      return;
+    }
+    await collection.Job.updateOne(
+      {
+        jobName: "fetchFriendSummary",
+        steamId: steamId,
+      },
+      {
+        $set: {
+          jobName: "fetchFriendSummary",
+          steamId: steamId,
+          timestamp: Date.now(),
+        },
+      },
+      {
+        upsert: true,
+      },
+    );
+
+    const summary = await steamUser.getUserSummary(steamId);
+    if (!summary?.name || !summary?.steamId) {
+      return;
+    }
+
+    const friend = await collection.Friend.findOne({ steamId });
+
+    const $set = {};
+    const $addToSet = {};
+
+    if (
+      summary?.isVACBan === 1 ||
+      summary?.isGameBan === 1 ||
+      summary?.isTradeBan === 1
+    ) {
+      $set.banned = true;
+    }
+    if (typeof summary.level === "number") {
+      $set.steamLevel = summary.level;
+    }
+    if (typeof summary.memberSince === "number") {
+      $set.memberSince = summary.memberSince;
+    }
+    if (typeof summary.isLimitedAccount === "number") {
+      $set.limited_account = summary.isLimitedAccount;
+    }
+    if (summary.name) {
+      $set.personaName = summary.name;
+      $addToSet.historyName = summary.name;
+    }
+    if (summary.avatarHash) {
+      $set.avatarHash = summary.avatarHash;
+      $addToSet.avatarHistory = summary.avatarHash;
+    }
+
+    if (Object.keys($set).length) {
+      await collection.MyAccount.updateOne({ steamId }, { $set });
+
+      await collection.Friend.updateOne(
+        { steamId },
+        { $set },
+        {
+          upsert: true,
+        },
+      );
+    }
+
+    if (Object.keys($addToSet).length) {
+      await collection.FriendInfo.updateOne(
+        { steamId },
+        {
+          $addToSet,
+        },
+        {
+          upsert: true,
+        },
+      );
+    }
+
+    let banned = "";
+    if (summary.isVACBan === 1) {
+      banned = "VAC ban";
+    } else if (summary.isGameBan === 1) {
+      banned = "Game ban";
+    }
+
+    if (friend && !friend.banned && banned) {
+      //just get banned
+      const botNatriDiscord = new DiscordUser(
+        await getDiscordToken(DiscordAccounts.botnatri),
+      );
+      await botNatriDiscord.sendMessage({
+        channelId: "1242161465205719110",
+        content: `[${summary.name.replaceAll(/\p{Extended_Pictographic}/gu, "")}](${summary.url}) : ${banned}`,
+      });
+    }
+  }
+
+  while (friendsIDList.length) {
+    const steamId = friendsIDList.shift();
+    if (!steamId) {
+      break;
+    }
+    await fetchFriend(steamId);
+  }
+}
+
+export async function getDiscordToken(account) {
+  const headers = (await collection.DiscordAccountHeader.findOne({ account }))
+    ?.headers;
+  const authorizationKey = Object.keys(headers).find(
+    (name) => name.toLowerCase() === "authorization",
+  );
+  if (!authorizationKey) {
+    return;
+  }
+  return headers[authorizationKey];
 }
