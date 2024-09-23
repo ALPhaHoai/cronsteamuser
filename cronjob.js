@@ -39,7 +39,13 @@ export async function initCron() {
     "0 35 */3 * * *",
     async function () {
       const t1 = performance.now();
-      const accounts = await collection.MyAccount.find().toArray();
+      const accounts = await collection.MyAccount.find()
+        .project({
+          steamId: 1,
+          cookie: 1,
+          friendsIDList: 1,
+        })
+        .toArray();
       while (accounts.length) {
         const account = accounts.shift();
         if (!account) {
