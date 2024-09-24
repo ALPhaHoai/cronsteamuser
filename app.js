@@ -15,8 +15,9 @@ app.use(cookieParser());
 
 app.use("/", indexRouter);
 
-connect.then(function () {
-  initCron();
+setTimeout(async function () {
+  await connect();
+  await initCron();
 });
 
 export default app;
