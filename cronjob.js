@@ -1,7 +1,7 @@
 import { CronJob } from "cron";
 import moment from "moment";
 import SteamClient from "steamutils/SteamClient.js";
-import { collection, requireDB } from "./db.js";
+import { collection } from "./db.js";
 import _ from "lodash";
 import SteamUser from "steamutils";
 import DiscordUser from "discord-control";
@@ -159,66 +159,64 @@ async function fetchPlayersProfile(includeFriend = false) {
   //includeFriend: friend or my account
 
   const t1 = performance.now();
-  await requireDB(async function (collection) {
-    const fetchedSteamIds = [];
-    const myAccounts = await collection.MyAccount.find({
-      "config.store": { $ne: true },
-      banned: { $ne: true },
+  const fetchedSteamIds = [];
+  const myAccounts = await collection.MyAccount.find({
+    "config.store": { $ne: true },
+    banned: { $ne: true },
+  })
+    .project({
+      steamId: 1,
+      cookie: 1,
+      friendsIDList: 1,
     })
-      .project({
-        steamId: 1,
-        cookie: 1,
-        friendsIDList: 1,
-      })
-      .toArray();
+    .toArray();
 
-    const myAccountSteamIds = myAccounts.map(({ steamId }) => steamId);
-    console.log(`Total: ${myAccountSteamIds.length} accounts`);
+  const myAccountSteamIds = myAccounts.map(({ steamId }) => steamId);
+  console.log(`Total: ${myAccountSteamIds.length} accounts`);
 
-    while (myAccounts.length) {
-      const myAccount = myAccounts.shift();
-      if (!myAccount) {
-        break;
-      }
-      const steamId = myAccount.steamId;
-      if (fetchedSteamIds.includes(steamId)) {
-        continue;
-      }
-
-      let needFetchedSteamIds = [
-        steamId,
-        ...(myAccount.friendsIDList || []),
-      ].filter(function (friendSteamId) {
-        if (fetchedSteamIds.includes(friendSteamId)) {
-          return false;
-        }
-        if (includeFriend) {
-          return true;
-        }
-        return myAccountSteamIds.includes(friendSteamId);
-      });
-
-      if (needFetchedSteamIds.length) {
-        needFetchedSteamIds = _.shuffle(needFetchedSteamIds);
-        needFetchedSteamIds.length = Math.min(15, needFetchedSteamIds.length);
-        await SteamClient.isAccountPlayable({
-          cookie: myAccount.cookie,
-          async onPlayable(client) {
-            for (const friendSteamId of needFetchedSteamIds) {
-              console.log(
-                `fetching ${includeFriend ? "friend" : "my"} profile`,
-                friendSteamId,
-              );
-              const profile = await fetchPlayerProfile(friendSteamId, client);
-              if (profile) {
-                fetchedSteamIds.push(friendSteamId);
-              }
-            }
-          },
-        });
-      }
+  while (myAccounts.length) {
+    const myAccount = myAccounts.shift();
+    if (!myAccount) {
+      break;
     }
-  });
+    const steamId = myAccount.steamId;
+    if (fetchedSteamIds.includes(steamId)) {
+      continue;
+    }
+
+    let needFetchedSteamIds = [
+      steamId,
+      ...(myAccount.friendsIDList || []),
+    ].filter(function (friendSteamId) {
+      if (fetchedSteamIds.includes(friendSteamId)) {
+        return false;
+      }
+      if (includeFriend) {
+        return true;
+      }
+      return myAccountSteamIds.includes(friendSteamId);
+    });
+
+    if (needFetchedSteamIds.length) {
+      needFetchedSteamIds = _.shuffle(needFetchedSteamIds);
+      needFetchedSteamIds.length = Math.min(15, needFetchedSteamIds.length);
+      await SteamClient.isAccountPlayable({
+        cookie: myAccount.cookie,
+        async onPlayable(client) {
+          for (const friendSteamId of needFetchedSteamIds) {
+            console.log(
+              `fetching ${includeFriend ? "friend" : "my"} profile`,
+              friendSteamId,
+            );
+            const profile = await fetchPlayerProfile(friendSteamId, client);
+            if (profile) {
+              fetchedSteamIds.push(friendSteamId);
+            }
+          }
+        },
+      });
+    }
+  }
   const t2 = performance.now();
   console.log(
     `Fetch ${includeFriend ? "friend" : "my"} profiles took ${t2 - t1}ms`,

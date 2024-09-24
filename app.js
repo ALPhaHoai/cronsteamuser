@@ -3,17 +3,20 @@ import path from "path";
 import cookieParser from "cookie-parser";
 import logger from "morgan";
 import indexRouter from "./routes/index.js";
-import {initCron} from "./cronjob.js";
+import { initCron } from "./cronjob.js";
+import { connect } from "./db.js";
 
 const app = express();
 
-app.use(logger('dev'));
+app.use(logger("dev"));
 app.use(express.json());
-app.use(express.urlencoded({extended: false}));
+app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-app.use('/', indexRouter);
+app.use("/", indexRouter);
 
-initCron()
+connect.then(function () {
+  initCron();
+});
 
-export default app
+export default app;

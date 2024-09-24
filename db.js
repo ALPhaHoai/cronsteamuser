@@ -2,7 +2,7 @@ import { MongoClient } from "mongodb";
 
 export const collection = {};
 
-export async function requireDB(callback) {
+export async function connect() {
   const client = new MongoClient(process.env.MONGODB_URI);
   await client.connect();
   console.log("Connected successfully to server");
@@ -12,13 +12,4 @@ export async function requireDB(callback) {
   collection.FriendInfo = db.collection("FriendInfo");
   collection.Job = db.collection("Job");
   collection.DiscordAccountHeader = db.collection("DiscordAccountHeader");
-
-  try {
-    await callback?.(collection);
-  } catch (e) {}
-
-  await client.close(true);
-  for (const collectionKey in collection) {
-    delete collection[collectionKey];
-  }
 }
