@@ -18,6 +18,6 @@ app.use("/", indexRouter);
 setTimeout(async function () {
   await connect();
   await initCron();
-});
+}, 5000);
 
 export default app;
