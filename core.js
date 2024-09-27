@@ -25,15 +25,25 @@ export async function initL2P() {
 
   //find send message client (store account)
   console.log("find send message client");
-  for await (const account of collection.MyAccount.find({
-    "config.store": true,
-    prime: {
-      $ne: true,
+  for await (const account of collection.MyAccount.aggregate([
+    {
+      $match: {
+        "config.store": true,
+        prime: {
+          $ne: true,
+        },
+        friendsIDList: {
+          $in: privatePrimeAccountSteamIds,
+        },
+      },
     },
-    friendsIDList: {
-      $in: privatePrimeAccountSteamIds,
+    {
+      $project: {
+        cookie: 1,
+        friendsIDList: 1,
+      },
     },
-  })) {
+  ])) {
     const result = await SteamClient.isAccountPlayable({
       cookie: account.cookie,
       isInvisible: false,
@@ -55,10 +65,19 @@ export async function initL2P() {
 
   //find l2p client (prime banned account)
   console.log("find l2p client");
-  for (const account of collection.MyAccount.find({
-    prime: true,
-    banned: true,
-  })) {
+  for (const account of collection.MyAccount.aggregate([
+    {
+      $match: {
+        prime: true,
+        banned: true,
+      },
+    },
+    {
+      $project: {
+        cookie: 1,
+      },
+    },
+  ])) {
     const result = await SteamClient.isAccountPlayable({
       cookie: account.cookie,
       isInvisible: false,
