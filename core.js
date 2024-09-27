@@ -3,6 +3,7 @@ import SteamClient from "steamutils/SteamClient.js";
 import DiscordUser from "discord-control";
 
 export let l2pClient = null;
+export let sendMsgClient = null;
 
 export async function initL2P() {
   const privatePrimeAccountSteamIds = (
@@ -19,7 +20,7 @@ export async function initL2P() {
       .toArray()
   ).map((account) => account.steamId);
 
-  const accounts = await collection.MyAccount.find({
+  const sendMsgAccounts = await collection.MyAccount.find({
     "config.store": true,
     prime: {
       $ne: true,
@@ -35,8 +36,19 @@ export async function initL2P() {
     })
     .toArray();
 
-  while (accounts.length && !l2pClient) {
-    const account = accounts.shift();
+  const primeBannedAccounts = await collection.MyAccount.find({
+    prime: true,
+    banned: true,
+  })
+    .project({
+      steamId: 1,
+      cookie: 1,
+    })
+    .toArray();
+
+  //find send message client (store account)
+  while (sendMsgAccounts.length && !sendMsgClient) {
+    const account = sendMsgAccounts.shift();
     if (!account) {
       break;
     }
@@ -44,12 +56,36 @@ export async function initL2P() {
     const result = await SteamClient.isAccountPlayable({
       cookie: account.cookie,
       isInvisible: false,
+      isFakeGameScore: false,
+      isPartyRegister: false,
       async onPlayable(client) {
-        l2pClient = client;
-        l2pClient.myAccountSteamId = account.friendsIDList.find(
+        sendMsgClient = client;
+        sendMsgClient.myAccountSteamId = account.friendsIDList.find(
           (steamId) =>
             steamId === privatePrimeAccountSteamIds.includes(steamId),
         );
+      },
+      keepLoginWhenPlayable: true,
+    });
+    if (result?.playable) {
+      break;
+    }
+  }
+
+  //find l2p client (prime banned account)
+  while (primeBannedAccounts.length && !l2pClient) {
+    const account = primeBannedAccounts.shift();
+    if (!account) {
+      break;
+    }
+
+    const result = await SteamClient.isAccountPlayable({
+      cookie: account.cookie,
+      isInvisible: false,
+      isFakeGameScore: false,
+      isPartyRegister: false,
+      async onPlayable(client) {
+        l2pClient = client;
       },
       keepLoginWhenPlayable: true,
     });

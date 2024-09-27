@@ -5,7 +5,12 @@ import { collection } from "./db.js";
 import _ from "lodash";
 import SteamUser from "steamutils";
 import DiscordUser from "discord-control";
-import { getDiscordToken, l2pClient, sendDiscordMessage } from "./core.js";
+import {
+  getDiscordToken,
+  l2pClient,
+  sendDiscordMessage,
+  sendMsgClient,
+} from "./core.js";
 
 export async function initCron() {
   console.log("initCron");
@@ -107,9 +112,9 @@ export async function initCron() {
       }
 
       if (hasFollowPlayers) {
-        const steamId = l2pClient.myAccountSteamId;
+        const steamId = sendMsgClient.myAccountSteamId;
         if (steamId) {
-          l2pClient.sendFriendMessage(
+          sendMsgClient.sendFriendMessage(
             steamId,
             "===(partySearch found following)===",
           );
