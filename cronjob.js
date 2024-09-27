@@ -36,7 +36,7 @@ export async function initCron() {
   ).start();
 
   new CronJob(
-    "0 35 */3 * * *",
+    "0 35 */5 * * *",
     async function () {
       const t1 = performance.now();
       const accounts = await collection.MyAccount.find()
@@ -54,7 +54,7 @@ export async function initCron() {
         await fetchSteamUserSummary(account);
       }
       const t2 = performance.now();
-      console.log(`fetchSteamUserSummary took ${t2 - t1}ms`);
+      console.log(`fetchSteamUserSummary took ${t2 - t1}ms`); //3hours
     },
     null,
     true,
