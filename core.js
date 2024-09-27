@@ -11,6 +11,9 @@ export async function initL2P() {
       "config.store": {
         $ne: true,
       },
+      banned: {
+        $ne: true,
+      },
       "config.isPrivate": true,
       prime: true,
     })
