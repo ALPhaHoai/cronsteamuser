@@ -27,7 +27,7 @@ export async function initL2P() {
 
   //find send message client (store account)
   console.log("find send message client");
-  for await (const account of collection.MyAccount.aggregate([
+  for await (const account of await collection.MyAccount.aggregate([
     {
       $match: {
         "config.store": true,
@@ -67,7 +67,7 @@ export async function initL2P() {
 
   //find l2p client (prime banned account)
   console.log("find l2p client");
-  for await (const account of collection.MyAccount.aggregate([
+  for await (const account of await collection.MyAccount.aggregate([
     {
       $match: {
         prime: true,
