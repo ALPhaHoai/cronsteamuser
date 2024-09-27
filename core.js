@@ -3,10 +3,9 @@ import SteamClient from "steamutils/SteamClient.js";
 import DiscordUser from "discord-control";
 
 export let l2pClient = null;
-export const privatePrimeAccountSteamIds = [];
 
 export async function initL2P() {
-  const _privatePrimeAccountSteamIds = (
+  const privatePrimeAccountSteamIds = (
     await collection.MyAccount.find({
       "config.store": {
         $ne: true,
@@ -19,8 +18,6 @@ export async function initL2P() {
       })
       .toArray()
   ).map((account) => account.steamId);
-  privatePrimeAccountSteamIds.length = 0;
-  privatePrimeAccountSteamIds.push(..._privatePrimeAccountSteamIds);
 
   const accounts = await collection.MyAccount.find({
     "config.store": true,
@@ -28,12 +25,13 @@ export async function initL2P() {
       $ne: true,
     },
     friendsIDList: {
-      $in: _privatePrimeAccountSteamIds,
+      $in: privatePrimeAccountSteamIds,
     },
   })
     .project({
       steamId: 1,
       cookie: 1,
+      friendsIDList: 1,
     })
     .toArray();
 
@@ -48,6 +46,10 @@ export async function initL2P() {
       isInvisible: false,
       async onPlayable(client) {
         l2pClient = client;
+        l2pClient.myAccountSteamId = account.friendsIDList.find(
+          (steamId) =>
+            steamId === privatePrimeAccountSteamIds.includes(steamId),
+        );
       },
       keepLoginWhenPlayable: true,
     });
