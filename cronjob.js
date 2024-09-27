@@ -5,12 +5,12 @@ import { collection } from "./db.js";
 import _ from "lodash";
 import SteamUser from "steamutils";
 import DiscordUser from "discord-control";
-
-export const DiscordAccounts = {
-  natri: "natri",
-  botnatri: "botnatri",
-  cinderella: "cinderella",
-};
+import {
+  getDiscordToken,
+  l2pClient,
+  privatePrimeAccountSteamIds,
+  sendDiscordMessage,
+} from "./core.js";
 
 export async function initCron() {
   console.log("initCron");
@@ -55,6 +55,74 @@ export async function initCron() {
       }
       const t2 = performance.now();
       console.log(`fetchSteamUserSummary took ${t2 - t1}ms`); //3hours
+    },
+    null,
+    true,
+    "Asia/Ho_Chi_Minh",
+  ).start();
+
+  new CronJob(
+    "*/15 * * * * *",
+    async function () {
+      if (!l2pClient) {
+        return;
+      }
+      const players = await l2pClient.partySearch({
+        prime: true,
+        game_type: "Premier",
+        rank: 9000,
+        timeout: 60000,
+      });
+      if (!Array.isArray(players) || !players.length) {
+        return;
+      }
+      let hasFollowPlayers = false;
+      for (const player of players) {
+        const followPlayer = await collection.Friend.countDocuments({
+          steamId: player.steamId,
+          isFollow: true,
+        });
+        if (followPlayer) {
+          hasFollowPlayers = true;
+          const msg = [];
+          msg.push("L2P");
+          msg.push(player.prime);
+          msg.push(player.player_name);
+          msg.push(player.rank);
+          msg.push(player.friendCode);
+          msg.push(
+            `[${player.steamId}](https://steamcommunity.com/profiles/${player.steamId})`,
+          );
+          sendDiscordMessage(msg);
+        }
+      }
+
+      if (hasFollowPlayers) {
+        const steamId = _.sample(privatePrimeAccountSteamIds);
+        if (steamId) {
+          l2pClient.sendFriendMessage(
+            steamId,
+            "===(partySearch found following)===",
+          );
+        }
+      }
+
+      for (const player of players) {
+        await collection.L2PBoard.updateOne(
+          {
+            steamId: player.steamId,
+          },
+          {
+            $set: {
+              ...player,
+              timestamp: Date.now(),
+            },
+          },
+          {
+            upsert: true,
+          },
+        );
+      }
     },
     null,
     true,
@@ -320,7 +388,7 @@ async function fetchSteamUserSummary(account) {
     if (friend && !friend.banned && banned) {
       //just get banned
       const botNatriDiscord = new DiscordUser(
-        await getDiscordToken(DiscordAccounts.botnatri),
+        await getDiscordToken("botnatri"),
       );
       await botNatriDiscord.sendMessage({
         channelId: "1242161465205719110",
@@ -336,16 +404,4 @@ async function fetchSteamUserSummary(account) {
     }
     await fetchFriend(steamId);
   }
-}
-
-export async function getDiscordToken(account) {
-  const headers = (await collection.DiscordAccountHeader.findOne({ account }))
-    ?.headers;
-  const authorizationKey = Object.keys(headers).find(
-    (name) => name.toLowerCase() === "authorization",
-  );
-  if (!authorizationKey) {
-    return;
-  }
-  return headers[authorizationKey];
 }

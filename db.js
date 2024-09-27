@@ -12,4 +12,5 @@ export async function connect() {
   collection.FriendInfo = db.collection("FriendInfo");
   collection.Job = db.collection("Job");
   collection.DiscordAccountHeader = db.collection("DiscordAccountHeader");
+  collection.L2PBoard = db.collection("L2PBoard");
 }
