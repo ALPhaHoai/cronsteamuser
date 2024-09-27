@@ -144,7 +144,6 @@ export async function fetchPlayerProfile(steamId, steamClient) {
     Object.assign(update, {
       prime: !!profile.prime,
       ...(typeof profile.elo === "number" && { elo: profile.elo }),
-      ...(profile.vac_banned === 1 && { banned: true }),
     });
 
     if (typeof profile.player_level === "number" && profile.player_level) {
@@ -169,7 +168,6 @@ export async function fetchPlayerProfile(steamId, steamClient) {
         prime: !!profile.prime,
         lastTimeFetchPlayerProfile: Date.now(),
         ...(typeof profile.elo === "number" && { elo: profile.elo }),
-        ...(profile.vac_banned === 1 && { banned: true }),
       },
     },
   );
