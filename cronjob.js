@@ -71,7 +71,7 @@ export async function fetchPlayerProfile(steamId, steamClient) {
     return null;
   }
 
-  console.log(`[steamId] ELO: ${profile.elo} ${typeof profile.elo}`);
+  console.log(`[${steamId}] ELO: ${profile.elo} ${typeof profile.elo}`);
 
   // Update MyAccount if applicable
   const myAccount = await collection.MyAccount.findOne({ steamId });
