@@ -5,7 +5,7 @@ import DiscordUser from "discord-control";
 export let l2pClient = null;
 export const privatePrimeAccountSteamIds = [];
 
-async function initL2P() {
+export async function initL2P() {
   const _privatePrimeAccountSteamIds = (
     await collection.MyAccount.find({
       "config.store": {
