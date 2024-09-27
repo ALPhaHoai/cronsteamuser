@@ -23,7 +23,9 @@ export async function initL2P() {
       .toArray()
   ).map((account) => account.steamId);
 
-  const sendMsgAccounts = await collection.MyAccount.find({
+  //find send message client (store account)
+  console.log("find send message client");
+  for await (const account of collection.MyAccount.find({
     "config.store": true,
     prime: {
       $ne: true,
@@ -31,31 +33,10 @@ export async function initL2P() {
     friendsIDList: {
       $in: privatePrimeAccountSteamIds,
     },
-  })
-    .project({
-      steamId: 1,
-      cookie: 1,
-      friendsIDList: 1,
-    })
-    .toArray();
-
-  const primeBannedAccounts = await collection.MyAccount.find({
-    prime: true,
-    banned: true,
-  })
-    .project({
-      steamId: 1,
-      cookie: 1,
-    })
-    .toArray();
-
-  //find send message client (store account)
-  while (sendMsgAccounts.length && !sendMsgClient) {
-    const account = sendMsgAccounts.shift();
-    if (!account) {
-      break;
-    }
-
+  }).project({
+    cookie: 1,
+    friendsIDList: 1,
+  })) {
     const result = await SteamClient.isAccountPlayable({
       cookie: account.cookie,
       isInvisible: false,
@@ -76,12 +57,13 @@ export async function initL2P() {
   }
 
   //find l2p client (prime banned account)
-  while (primeBannedAccounts.length && !l2pClient) {
-    const account = primeBannedAccounts.shift();
-    if (!account) {
-      break;
-    }
-
+  console.log("find l2p client");
+  for (const account of collection.MyAccount.find({
+    prime: true,
+    banned: true,
+  }).project({
+    cookie: 1,
+  })) {
     const result = await SteamClient.isAccountPlayable({
       cookie: account.cookie,
       isInvisible: false,
