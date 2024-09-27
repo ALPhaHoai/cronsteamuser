@@ -64,8 +64,8 @@ export async function initCron() {
       }
       const players = await l2pClient.partySearch({
         prime: true,
-        game_type: "Premier",
-        rank: 9000,
+        game_type: "Competitive",
+        rank: 0,
         timeout: 60000,
       });
       if (!Array.isArray(players) || !players.length) {
