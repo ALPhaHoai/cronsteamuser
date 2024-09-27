@@ -33,9 +33,6 @@ export async function initL2P() {
     friendsIDList: {
       $in: privatePrimeAccountSteamIds,
     },
-  }).project({
-    cookie: 1,
-    friendsIDList: 1,
   })) {
     const result = await SteamClient.isAccountPlayable({
       cookie: account.cookie,
@@ -61,8 +58,6 @@ export async function initL2P() {
   for (const account of collection.MyAccount.find({
     prime: true,
     banned: true,
-  }).project({
-    cookie: 1,
   })) {
     const result = await SteamClient.isAccountPlayable({
       cookie: account.cookie,
