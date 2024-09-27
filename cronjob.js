@@ -62,13 +62,27 @@ export async function initCron() {
       if (!l2pClient) {
         return;
       }
-      const players = await l2pClient.partySearch({
-        prime: true,
-        game_type: "Competitive",
-        rank: 0,
-        timeout: 60000,
-      });
-      if (!Array.isArray(players) || !players.length) {
+      const competitivePlayers =
+        (await l2pClient.partySearch({
+          prime: true,
+          game_type: "Competitive",
+          rank: 0,
+          timeout: 60000,
+        })) || [];
+      const wingmanPlayers =
+        (await l2pClient.partySearch({
+          prime: true,
+          game_type: "Wingman",
+          rank: 0,
+          timeout: 60000,
+        })) || [];
+
+      const players = _.uniqBy(
+        [...competitivePlayers, ...wingmanPlayers],
+        "steamId",
+      );
+
+      if (!players.length) {
         return;
       }
       let hasFollowPlayers = false;
