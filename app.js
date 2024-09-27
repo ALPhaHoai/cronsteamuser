@@ -19,6 +19,7 @@ app.use("/", indexRouter);
 
 setTimeout(async function () {
   await connect();
+  await sleep(5000);
   await initL2P();
   await sleep(5000);
   await initCron();

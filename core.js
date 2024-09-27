@@ -6,6 +6,8 @@ export let l2pClient = null;
 export let sendMsgClient = null;
 
 export async function initL2P() {
+  console.log("initL2P");
+
   const privatePrimeAccountSteamIds = (
     await collection.MyAccount.find({
       "config.store": {
@@ -25,7 +27,7 @@ export async function initL2P() {
 
   //find send message client (store account)
   console.log("find send message client");
-  for await (const account of collection.MyAccount.aggregate([
+  for await (const account of await collection.MyAccount.aggregate([
     {
       $match: {
         "config.store": true,
@@ -65,7 +67,7 @@ export async function initL2P() {
 
   //find l2p client (prime banned account)
   console.log("find l2p client");
-  for (const account of collection.MyAccount.aggregate([
+  for (const account of await collection.MyAccount.aggregate([
     {
       $match: {
         prime: true,
