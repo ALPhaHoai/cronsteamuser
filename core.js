@@ -39,6 +39,7 @@ export async function initL2P() {
         },
       },
     },
+    { $sample: { size: 100 } },
     {
       $project: {
         cookie: 1,
