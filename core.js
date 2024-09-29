@@ -74,6 +74,7 @@ export async function initL2P() {
         banned: true,
       },
     },
+    { $sample: { size: 100 } },
     {
       $project: {
         cookie: 1,

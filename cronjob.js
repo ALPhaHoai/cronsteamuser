@@ -35,8 +35,8 @@ export async function initCron() {
     "Asia/Ho_Chi_Minh",
   ).start();
 
-  new CronJob(
-    "0 35 */5 * * *",
+  /*new CronJob(
+    "0 35 *!/5 * * *",
     async function () {
       const t1 = performance.now();
       const accounts = await collection.MyAccount.find()
@@ -59,7 +59,7 @@ export async function initCron() {
     null,
     true,
     "Asia/Ho_Chi_Minh",
-  ).start();
+  ).start();*/
 
   new CronJob(
     "*/15 * * * * *",
