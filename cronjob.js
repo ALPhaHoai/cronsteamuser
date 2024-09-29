@@ -71,19 +71,30 @@ export async function initCron() {
         (await l2pClient.partySearch({
           prime: true,
           game_type: "Competitive",
-          rank: 0,
+          rank: "Gold Nova I",
+          timeout: 60000,
+        })) || [];
+      const nonPrimeCompetitivePlayers =
+        (await l2pClient.partySearch({
+          prime: false,
+          game_type: "Competitive",
+          rank: "Gold Nova I",
           timeout: 60000,
         })) || [];
       const wingmanPlayers =
         (await l2pClient.partySearch({
           prime: true,
           game_type: "Wingman",
-          rank: 0,
+          rank: "Gold Nova I",
           timeout: 60000,
         })) || [];
 
       const players = _.uniqBy(
-        [...competitivePlayers, ...wingmanPlayers],
+        [
+          ...competitivePlayers,
+          ...nonPrimeCompetitivePlayers,
+          ...wingmanPlayers,
+        ],
         "steamId",
       );
 
