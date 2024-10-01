@@ -47,22 +47,18 @@ export async function initL2P() {
       },
     },
   ])) {
-    const result = await SteamClient.isAccountPlayable({
+    const client = new SteamClient({
       cookie: account.cookie,
-      isInvisible: false,
-      isFakeGameScore: false,
-      isPartyRegister: false,
-      async onPlayable(client) {
-        sendMsgClient = client;
-        sendMsgClient.myAccountSteamId = account.friendsIDList.find(
-          (steamId) =>
-            steamId === privatePrimeAccountSteamIds.includes(steamId),
-        );
-      },
-      keepLoginWhenPlayable: true,
     });
-    if (result?.playable) {
+    const playable = await client.playCSGO();
+    if (playable) {
+      sendMsgClient = client;
+      sendMsgClient.myAccountSteamId = account.friendsIDList.find(
+        (steamId) => steamId === privatePrimeAccountSteamIds.includes(steamId),
+      );
       break;
+    } else {
+      client.logOff();
     }
   }
 
@@ -82,18 +78,15 @@ export async function initL2P() {
       },
     },
   ])) {
-    const result = await SteamClient.isAccountPlayable({
+    const client = new SteamClient({
       cookie: account.cookie,
-      isInvisible: false,
-      isFakeGameScore: false,
-      isPartyRegister: false,
-      async onPlayable(client) {
-        l2pClient = client;
-      },
-      keepLoginWhenPlayable: true,
     });
-    if (result?.playable) {
+    const playable = await client.playCSGO();
+    if (playable) {
+      l2pClient = client;
       break;
+    } else {
+      client.logOff();
     }
   }
 }
