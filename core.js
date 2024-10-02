@@ -52,13 +52,14 @@ export async function initL2P() {
     });
     const playable = await client.playCSGO();
     if (playable) {
+      client.offAllEvent();
       sendMsgClient = client;
       sendMsgClient.myAccountSteamId = account.friendsIDList.find(
         (steamId) => steamId === privatePrimeAccountSteamIds.includes(steamId),
       );
       break;
     } else {
-      client.logOff();
+      await client.logOff();
     }
   }
 
@@ -83,10 +84,11 @@ export async function initL2P() {
     });
     const playable = await client.playCSGO();
     if (playable) {
+      client.offAllEvent();
       l2pClient = client;
       break;
     } else {
-      client.logOff();
+      await client.logOff();
     }
   }
 }

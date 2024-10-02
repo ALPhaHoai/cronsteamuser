@@ -67,6 +67,9 @@ export async function initCron() {
       if (!l2pClient) {
         return;
       }
+
+      l2pClient.log("partySearch");
+
       const competitivePlayers =
         (await l2pClient.partySearch({
           prime: true,
