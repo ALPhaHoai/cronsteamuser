@@ -100,6 +100,7 @@ export async function initCron() {
         ],
         "steamId",
       );
+      l2pClient.log("partySearch result", players.length);
 
       if (!players.length) {
         return;
