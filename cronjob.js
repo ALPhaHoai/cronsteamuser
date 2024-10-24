@@ -294,22 +294,23 @@ async function fetchPlayersProfile(includeFriend = false) {
 
     if (needFetchedSteamIds.length) {
       needFetchedSteamIds = _.shuffle(needFetchedSteamIds);
-      needFetchedSteamIds.length = Math.min(15, needFetchedSteamIds.length);
-      await SteamClient.isAccountPlayable({
-        cookie: myAccount.cookie,
-        async onPlayable(client) {
-          for (const friendSteamId of needFetchedSteamIds) {
-            console.log(
-              `fetching ${includeFriend ? "friend" : "my"} profile`,
-              friendSteamId,
-            );
-            const profile = await fetchPlayerProfile(friendSteamId, client);
-            if (profile) {
-              fetchedSteamIds.push(friendSteamId);
-            }
+      needFetchedSteamIds.length = Math.min(30, needFetchedSteamIds.length);
+      const steamClient = new SteamClient({ cookie: myAccount.cookie });
+      const playable = await steamClient.playCSGO();
+      if (playable) {
+        for (const friendSteamId of needFetchedSteamIds) {
+          console.log(
+            `fetching ${includeFriend ? "friend" : "my"} profile`,
+            friendSteamId,
+          );
+          const profile = await fetchPlayerProfile(friendSteamId, steamClient);
+          if (profile) {
+            fetchedSteamIds.push(friendSteamId);
           }
-        },
-      });
+        }
+      }
+      steamClient.offAllEvent();
+      steamClient.logOff();
     }
   }
   const t2 = performance.now();
