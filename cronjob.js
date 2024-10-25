@@ -296,7 +296,7 @@ async function fetchPlayersProfile(includeFriend = false) {
       needFetchedSteamIds = _.shuffle(needFetchedSteamIds);
       needFetchedSteamIds.length = Math.min(30, needFetchedSteamIds.length);
       const steamClient = new SteamClient({ cookie: myAccount.cookie });
-      const playable = await steamClient.playCSGO();
+      const playable = await steamClient.playCSGOSilent();
       if (playable) {
         for (const friendSteamId of needFetchedSteamIds) {
           console.log(
