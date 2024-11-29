@@ -69,7 +69,7 @@ export async function initL2P() {
     {
       $match: {
         prime: true,
-        banned: true,
+        "config.l2p": true,
       },
     },
     { $sample: { size: 100 } },
