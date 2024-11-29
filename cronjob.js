@@ -1,22 +1,15 @@
 import { CronJob } from "cron";
-import moment from "moment";
 import SteamClient from "steamutils/SteamClient.js";
 import { collection } from "./db.js";
 import _ from "lodash";
-import SteamUser from "steamutils";
-import DiscordUser from "discord-control";
-import {
-  getDiscordToken,
-  l2pClient,
-  sendDiscordMessage,
-  sendMsgClient,
-} from "./core.js";
+import { l2pClient, sendDiscordMessage, sendMsgClient } from "./core.js";
+import { calculateAccountXP } from "steamutils/utils.js";
 
 export async function initCron() {
   console.log("initCron");
 
   new CronJob(
-    "0 */30 * * * *",
+    "0 30 * * * *",
     async function () {
       await fetchPlayersProfile(false);
     },
@@ -34,32 +27,6 @@ export async function initCron() {
     true,
     "Asia/Ho_Chi_Minh",
   ).start();
-
-  /*new CronJob(
-    "0 35 *!/5 * * *",
-    async function () {
-      const t1 = performance.now();
-      const accounts = await collection.MyAccount.find()
-        .project({
-          steamId: 1,
-          cookie: 1,
-          friendsIDList: 1,
-        })
-        .toArray();
-      while (accounts.length) {
-        const account = accounts.shift();
-        if (!account) {
-          break;
-        }
-        await fetchSteamUserSummary(account);
-      }
-      const t2 = performance.now();
-      console.log(`fetchSteamUserSummary took ${t2 - t1}ms`); //3hours
-    },
-    null,
-    true,
-    "Asia/Ho_Chi_Minh",
-  ).start();*/
 
   new CronJob(
     "*/15 * * * * *",
@@ -173,8 +140,12 @@ export async function fetchPlayerProfile(steamId, steamClient) {
   // Update MyAccount if applicable
   const myAccount = await collection.MyAccount.findOne({ steamId });
   if (myAccount) {
-    const currentXP = profile.current_xp;
-    const update = calculateMyAccountXP(myAccount, currentXP) || {};
+    const update = calculateAccountXP(
+      myAccount.currentXp,
+      myAccount.xpEarnedThisWeek,
+      myAccount.xpEarned,
+      profile.current_xp,
+    );
     Object.assign(update, {
       prime: !!profile.prime,
       ...(typeof profile.elo === "number" && { elo: profile.elo }),
@@ -206,46 +177,6 @@ export async function fetchPlayerProfile(steamId, steamClient) {
     },
   );
   return profile;
-}
-
-export function calculateMyAccountXP(myAccount, nextXp) {
-  if (!Number.isFinite(nextXp)) {
-    return;
-  }
-
-  const currentXp = myAccount.currentXp || 0;
-  const update = { currentXp: nextXp };
-  if (nextXp < currentXp) {
-    update.xpExceed = Date.now();
-  }
-  const resetDay = getBonusXpTimeRefresh().format("YYYY-MM-DD");
-  const isWeekReset = myAccount.xpEarnedThisWeek !== resetDay;
-  let xpEarnedThisRank = nextXp - currentXp;
-  if (xpEarnedThisRank < 0) {
-    xpEarnedThisRank += 5000;
-  }
-  if (isWeekReset) {
-    update.xpEarnedThisWeek = resetDay;
-    update.xpEarned = xpEarnedThisRank;
-  } else {
-    update.xpEarned = (myAccount.xpEarned || 0) + xpEarnedThisRank;
-    if (xpEarnedThisRank === 0) {
-      return;
-    }
-  }
-
-  return update;
-}
-
-export function getBonusXpTimeRefresh() {
-  let resetDay = moment.utc().startOf("isoWeek").add(2, "days").add(1, "hours");
-  while (moment().isAfter(resetDay)) {
-    resetDay = resetDay.add(7, "days");
-  }
-  if (moment().isBefore(resetDay)) {
-    resetDay = resetDay.subtract(7, "days");
-  }
-  return resetDay;
 }
 
 async function fetchPlayersProfile(includeFriend = false) {
@@ -317,119 +248,4 @@ async function fetchPlayersProfile(includeFriend = false) {
   console.log(
     `Fetch ${includeFriend ? "friend" : "my"} profiles took ${t2 - t1}ms`,
   );
-}
-
-async function fetchSteamUserSummary(account) {
-  if (!account) {
-    return;
-  }
-  const steamUser = new SteamUser(account.cookie);
-  const friendsIDList = account.friendsIDList || [];
-
-  async function fetchFriend(steamId) {
-    if (!steamId) {
-      return;
-    }
-    await collection.Job.updateOne(
-      {
-        jobName: "fetchFriendSummary",
-        steamId: steamId,
-      },
-      {
-        $set: {
-          jobName: "fetchFriendSummary",
-          steamId: steamId,
-          timestamp: Date.now(),
-        },
-      },
-      {
-        upsert: true,
-      },
-    );
-
-    const summary = await steamUser.getUserSummary(steamId);
-    if (!summary?.name || !summary?.steamId) {
-      return;
-    }
-
-    const friend = await collection.Friend.findOne({ steamId });
-
-    const $set = {};
-    const $addToSet = {};
-
-    if (
-      summary?.isVACBan === 1 ||
-      summary?.isGameBan === 1 ||
-      summary?.isTradeBan === 1
-    ) {
-      $set.banned = true;
-    }
-    if (typeof summary.level === "number") {
-      $set.steamLevel = summary.level;
-    }
-    if (typeof summary.memberSince === "number") {
-      $set.memberSince = summary.memberSince;
-    }
-    if (typeof summary.isLimitedAccount === "number") {
-      $set.limited_account = summary.isLimitedAccount;
-    }
-    if (summary.name) {
-      $set.personaName = summary.name;
-      $addToSet.historyName = summary.name;
-    }
-    if (summary.avatarHash) {
-      $set.avatarHash = summary.avatarHash;
-      $addToSet.avatarHistory = summary.avatarHash;
-    }
-
-    if (Object.keys($set).length) {
-      await collection.MyAccount.updateOne({ steamId }, { $set });
-
-      await collection.Friend.updateOne(
-        { steamId },
-        { $set },
-        {
-          upsert: true,
-        },
-      );
-    }
-
-    if (Object.keys($addToSet).length) {
-      await collection.FriendInfo.updateOne(
-        { steamId },
-        {
-          $addToSet,
-        },
-        {
-          upsert: true,
-        },
-      );
-    }
-
-    let banned = "";
-    if (summary.isVACBan === 1) {
-      banned = "VAC ban";
-    } else if (summary.isGameBan === 1) {
-      banned = "Game ban";
-    }
-
-    if (friend && !friend.banned && banned) {
-      //just get banned
-      const botNatriDiscord = new DiscordUser(
-        await getDiscordToken("botnatri"),
-      );
-      await botNatriDiscord.sendMessage({
-        channelId: "1242161465205719110",
-        content: `[${summary.name.replaceAll(/\p{Extended_Pictographic}/gu, "")}](${summary.url}) : ${banned}`,
-      });
-    }
-  }
-
-  while (friendsIDList.length) {
-    const steamId = friendsIDList.shift();
-    if (!steamId) {
-      break;
-    }
-    await fetchFriend(steamId);
-  }
 }
