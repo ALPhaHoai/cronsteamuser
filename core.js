@@ -53,6 +53,7 @@ export async function initL2P() {
     const playable = await client.playCSGO();
     if (playable) {
       client.offAllEvent();
+      sendMsgClient?.logOff();
       sendMsgClient = client;
       sendMsgClient.myAccountSteamId = account.friendsIDList.find(
         (steamId) => steamId === privatePrimeAccountSteamIds.includes(steamId),
@@ -85,6 +86,7 @@ export async function initL2P() {
     const playable = await client.playCSGO();
     if (playable) {
       client.offAllEvent();
+      l2pClient?.logOff();
       l2pClient = client;
       break;
     } else {

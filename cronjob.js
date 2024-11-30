@@ -2,7 +2,12 @@ import { CronJob } from "cron";
 import SteamClient from "steamutils/SteamClient.js";
 import { collection } from "./db.js";
 import _ from "lodash";
-import { l2pClient, sendDiscordMessage, sendMsgClient } from "./core.js";
+import {
+  initL2P,
+  l2pClient,
+  sendDiscordMessage,
+  sendMsgClient,
+} from "./core.js";
 import { calculateAccountXP } from "steamutils/utils.js";
 
 export async function initCron() {
@@ -29,97 +34,8 @@ export async function initCron() {
   ).start();
 
   new CronJob(
-    "*/15 * * * * *",
-    async function () {
-      if (!l2pClient) {
-        return;
-      }
-
-      l2pClient.log("partySearch");
-
-      const competitivePlayers =
-        (await l2pClient.partySearch({
-          prime: true,
-          game_type: "Competitive",
-          rank: "Gold Nova I",
-          timeout: 60000,
-        })) || [];
-      const nonPrimeCompetitivePlayers =
-        (await l2pClient.partySearch({
-          prime: false,
-          game_type: "Competitive",
-          rank: "Gold Nova I",
-          timeout: 60000,
-        })) || [];
-      const wingmanPlayers =
-        (await l2pClient.partySearch({
-          prime: true,
-          game_type: "Wingman",
-          rank: "Gold Nova I",
-          timeout: 60000,
-        })) || [];
-
-      const players = _.uniqBy(
-        [
-          ...competitivePlayers,
-          ...nonPrimeCompetitivePlayers,
-          ...wingmanPlayers,
-        ],
-        "steamId",
-      );
-      l2pClient.log("partySearch result", players.length);
-
-      if (!players.length) {
-        return;
-      }
-      let hasFollowPlayers = false;
-      for (const player of players) {
-        const followPlayer = await collection.Friend.countDocuments({
-          steamId: player.steamId,
-          isFollow: true,
-        });
-        if (followPlayer) {
-          hasFollowPlayers = true;
-          const msg = [];
-          msg.push("L2P");
-          msg.push(player.prime);
-          msg.push(player.player_name);
-          msg.push(player.rank);
-          msg.push(player.friendCode);
-          msg.push(
-            `[${player.steamId}](https://steamcommunity.com/profiles/${player.steamId})`,
-          );
-          sendDiscordMessage(msg);
-        }
-      }
-
-      if (hasFollowPlayers) {
-        const steamId = sendMsgClient.myAccountSteamId;
-        if (steamId) {
-          sendMsgClient.sendFriendMessage(
-            steamId,
-            "===(partySearch found following)===",
-          );
-        }
-      }
-
-      for (const player of players) {
-        await collection.L2PBoard.updateOne(
-          {
-            steamId: player.steamId,
-          },
-          {
-            $set: {
-              ...player,
-              timestamp: Date.now(),
-            },
-          },
-          {
-            upsert: true,
-          },
-        );
-      }
-    },
+    "*/20 * * * * *",
+    partySearchCron,
     null,
     true,
     "Asia/Ho_Chi_Minh",
@@ -248,4 +164,102 @@ async function fetchPlayersProfile(includeFriend = false) {
   console.log(
     `Fetch ${includeFriend ? "friend" : "my"} profiles took ${t2 - t1}ms`,
   );
+}
+
+let failCount = 0;
+let initingL2P = false;
+async function partySearchCron() {
+  if (!l2pClient || initingL2P) {
+    return;
+  }
+  if (failCount > 30) {
+    initingL2P = true;
+    try {
+      await initL2P();
+    } catch (e) {}
+    initingL2P = false;
+    return;
+  }
+
+  l2pClient.log("partySearch");
+
+  const competitivePlayers =
+    (await l2pClient.partySearch({
+      prime: true,
+      game_type: "Competitive",
+      rank: "Gold Nova I",
+      timeout: 60000,
+    })) || [];
+  const nonPrimeCompetitivePlayers =
+    (await l2pClient.partySearch({
+      prime: false,
+      game_type: "Competitive",
+      rank: "Gold Nova I",
+      timeout: 60000,
+    })) || [];
+  const wingmanPlayers =
+    (await l2pClient.partySearch({
+      prime: true,
+      game_type: "Wingman",
+      rank: "Gold Nova I",
+      timeout: 60000,
+    })) || [];
+
+  const players = _.uniqBy(
+    [...competitivePlayers, ...nonPrimeCompetitivePlayers, ...wingmanPlayers],
+    "steamId",
+  );
+  l2pClient.log("partySearch result", players.length);
+
+  if (!players.length) {
+    failCount++;
+    return;
+  }
+  let hasFollowPlayers = false;
+  for (const player of players) {
+    const followPlayer = await collection.Friend.countDocuments({
+      steamId: player.steamId,
+      isFollow: true,
+    });
+    if (followPlayer) {
+      hasFollowPlayers = true;
+      const msg = [];
+      msg.push("L2P");
+      msg.push(player.prime);
+      msg.push(player.player_name);
+      msg.push(player.rank);
+      msg.push(player.friendCode);
+      msg.push(
+        `[${player.steamId}](https://steamcommunity.com/profiles/${player.steamId})`,
+      );
+      sendDiscordMessage(msg);
+    }
+  }
+
+  if (hasFollowPlayers) {
+    const steamId = sendMsgClient.myAccountSteamId;
+    if (steamId) {
+      sendMsgClient.sendFriendMessage(
+        steamId,
+        "===(partySearch found following)===",
+      );
+    }
+  }
+
+  for (const player of players) {
+    await collection.L2PBoard.updateOne(
+      {
+        steamId: player.steamId,
+      },
+      {
+        $set: {
+          ...player,
+          timestamp: Date.now(),
+        },
+      },
+      {
+        upsert: true,
+      },
+    );
+  }
 }
