@@ -50,7 +50,7 @@ export async function initL2P() {
     const client = new SteamClient({
       cookie: account.cookie,
     });
-    const playable = await client.playCSGO();
+    const playable = await client.playCSGOSilent();
     if (playable) {
       client.offAllEvent();
       sendMsgClient?.logOff();
@@ -83,7 +83,7 @@ export async function initL2P() {
     const client = new SteamClient({
       cookie: account.cookie,
     });
-    const playable = await client.playCSGO();
+    const playable = await client.playCSGOSilent();
     if (playable) {
       client.offAllEvent();
       l2pClient?.logOff();
