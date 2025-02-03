@@ -9,6 +9,7 @@ import {
   sendMsgClient,
 } from "./core.js";
 import { calculateAccountXP } from "steamutils/utils.js";
+import moment from "moment";
 
 export async function initCron() {
   console.log("initCron");
@@ -111,6 +112,7 @@ async function fetchPlayersProfile(includeFriend = false) {
       steamId: 1,
       cookie: 1,
       friendsIDList: 1,
+      competitiveCooldownLevel: 1,
     })
     .toArray();
 
@@ -140,26 +142,44 @@ async function fetchPlayersProfile(includeFriend = false) {
       return myAccountSteamIds.includes(friendSteamId);
     });
 
-    if (needFetchedSteamIds.length) {
-      needFetchedSteamIds = _.shuffle(needFetchedSteamIds);
-      needFetchedSteamIds.length = Math.min(30, needFetchedSteamIds.length);
-      const steamClient = new SteamClient({ cookie: myAccount.cookie });
-      const playable = await steamClient.playCSGOSilent();
-      if (playable) {
-        for (const friendSteamId of needFetchedSteamIds) {
-          console.log(
-            `fetching ${includeFriend ? "friend" : "my"} profile`,
-            friendSteamId,
-          );
-          const profile = await fetchPlayerProfile(friendSteamId, steamClient);
-          if (profile) {
-            fetchedSteamIds.push(friendSteamId);
-          }
+    if (!needFetchedSteamIds.length) {
+      continue;
+    }
+
+    needFetchedSteamIds = _.shuffle(needFetchedSteamIds);
+    needFetchedSteamIds.length = Math.min(30, needFetchedSteamIds.length);
+    const steamClient = new SteamClient({ cookie: myAccount.cookie });
+    const playable = await steamClient.playCSGOSilent();
+    if (playable) {
+      const cooldown_table =
+        myAccount.competitiveCooldownLevel?.cooldown_table?.[0];
+      const cooldownExpiration =
+        cooldown_table?.Competitive_Cooldown_Expiration?.replace(
+          "GMT",
+          "",
+        )?.trim();
+
+      if (
+        cooldownExpiration &&
+        cooldown_table?.Acknowledged === "No" &&
+        moment.utc(cooldownExpiration).isBefore(moment()) &&
+        Math.random() > 0.7
+      ) {
+        steamClient.acknowledgePenalty();
+      }
+      for (const friendSteamId of needFetchedSteamIds) {
+        console.log(
+          `fetching ${includeFriend ? "friend" : "my"} profile`,
+          friendSteamId,
+        );
+        const profile = await fetchPlayerProfile(friendSteamId, steamClient);
+        if (profile) {
+          fetchedSteamIds.push(friendSteamId);
         }
       }
-      steamClient.offAllEvent();
-      steamClient.logOff();
     }
+    steamClient.offAllEvent();
+    steamClient.logOff();
   }
   const t2 = performance.now();
   console.log(
