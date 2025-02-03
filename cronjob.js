@@ -34,7 +34,7 @@ export async function initCron() {
   ).start();
 
   new CronJob(
-    "*/20 * * * * *",
+    "0 * * * * *",
     partySearchCron,
     null,
     true,
@@ -64,7 +64,8 @@ export async function fetchPlayerProfile(steamId, steamClient) {
     );
     Object.assign(update, {
       prime: !!profile.prime,
-      ...(typeof profile.elo === "number" && { elo: profile.elo }),
+      ...(typeof profile.elo === "number" &&
+        profile.elo && { elo: profile.elo }),
     });
 
     if (typeof profile.player_level === "number" && profile.player_level) {
