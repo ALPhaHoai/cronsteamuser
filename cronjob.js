@@ -209,12 +209,14 @@ async function partySearchCron() {
     (await l2pClient.partySearch({
       prime: true,
       rank: "Gold Nova I",
+      game_type: "Competitive",
       timeout: 60000,
     })) || [];
   const nonPrimeCompetitivePlayers =
     (await l2pClient.partySearch({
       prime: false,
       rank: "Gold Nova I",
+      game_type: "Competitive",
       timeout: 60000,
     })) || [];
 
