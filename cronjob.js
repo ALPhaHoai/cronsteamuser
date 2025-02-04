@@ -194,6 +194,7 @@ async function partySearchCron() {
     return;
   }
   if (failCount > 30) {
+    failCount = 0;
     initingL2P = true;
     try {
       await initL2P();

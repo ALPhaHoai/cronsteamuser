@@ -64,7 +64,7 @@ export async function initL2P() {
     }
   }
 
-  //find l2p client (prime banned account)
+  //find l2p client (prime account)
   console.log("find l2p client");
   for await (const account of await collection.MyAccount.aggregate([
     {
