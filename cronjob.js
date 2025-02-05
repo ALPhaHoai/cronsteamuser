@@ -194,11 +194,14 @@ async function partySearchCron() {
     return;
   }
   if (failCount > 30) {
+    console.warn(`failCount exceeded 30. Resetting and reinitializing L2P.`);
     failCount = 0;
     initingL2P = true;
     try {
       await initL2P();
-    } catch (e) {}
+    } catch (e) {
+      console.error("Error initializing L2P:", e);
+    }
     initingL2P = false;
     return;
   }
@@ -224,12 +227,15 @@ async function partySearchCron() {
     [...competitivePlayers, ...nonPrimeCompetitivePlayers],
     "steamId",
   );
-  l2pClient.log("partySearch result", players.length);
 
   if (!players.length) {
+    console.warn("No players found in party search.");
     failCount++;
     return;
   }
+
+  l2pClient.log("partySearch result", players.length);
+
   let hasFollowPlayers = false;
   for (const player of players) {
     const followPlayer = await collection.Friend.countDocuments({
