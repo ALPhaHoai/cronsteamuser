@@ -98,7 +98,7 @@ export async function initL2P() {
 export async function sendDiscordMessage(messages) {
   //Send private message from Cinderella to Natri
   const now = moment().tz("Asia/Ho_Chi_Minh").format("DD/MM/YYYY HH:mm:ss");
-  const prefixs = [now, isMainCore];
+  const prefixs = [now, "cronsteamuser"];
   if (!Array.isArray(messages)) {
     messages = [messages];
   }
