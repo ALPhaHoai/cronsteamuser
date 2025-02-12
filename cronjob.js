@@ -89,7 +89,7 @@ export async function fetchPlayerProfile(steamId, steamClient) {
     {
       $set: {
         prime: !!profile.prime,
-        lastTimeFetchPlayerProfile: Date.now(),
+        lastTimeFetchFriendProfile: Date.now(),
         ...(typeof profile.elo === "number" && { elo: profile.elo }),
       },
     },
